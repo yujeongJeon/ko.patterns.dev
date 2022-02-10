@@ -140,3 +140,113 @@ Higher Order Component 패턴은 단일 공간에 모든 로직을 유지하면�
 
 ## Composing
 
+또한 여러 고차 컴포넌트들을 구성할 수도 있습니다. `DogImages` 리스트에 hover했을 때, `Hovering!` 텍스트 영역을 보여주는 기능을 추가해봅시다.
+
+HOC의 인자로 전달한 요소에 `hovering` prop을 제공하는 HOC를 만들어야 합니다. 해당 prop에 따라, 사용자가 `DogImages` 리스트에 hover 했는지에 따라 조건적으로 텍스트 영역을 렌더링할 수 있습니다.
+
+이제 `withHover` HOC를 `withLoader` HOC에 감쌉니다.
+
+```js
+export default withHover(
+  withLoader(DogImages, "https://dog.ceo/api/breed/labrador/images/random/6")
+);
+```
+
+`DogImages` 요소는 이제 `withHover`와 `withLoader`가 전달한 모든 props를 가집니다. 이제 `hovering` prop이 `true` 혹은 `false`인지에 따라 조건적으로 `Hovering!` 텍스트 영역을 렌더링할 수 있습니다.
+
+> A well-known library used for composing HOCs is [recompose](https://github.com/acdlite/recompose). Since HOCs can largely be replaced by React Hooks, the recompose library is no longer maintained, thus won't be covered in this article.
+
+<br />
+
+## Hooks
+
+어떤 경우에는, HOC 패턴을 React Hooks으로 대체할 수 있습니다.
+
+`withHover` HOC를 `useHover` hook으로 바꿔봅시다. 고차 컴포넌트를 갖는 대신, `mouseOver`와 `mouseLeave`이벤트 리스너를 요소에 추가하는 hook을 export합니다. 더이상 HOC에서 그랬던 것처럼 요소를 전달하지 않아도 됩니다. 그 대신, hook에서 `ref`를 반환하여 `mouseOver`와 `mouseLeave` 이벤트를 얻도록 할 것입니다.
+
+```js
+import { useState, useRef, useEffect } from "react";
+
+export default function useHover() {
+  const [hovering, setHover] = useState(false);
+  const ref = useRef(null);
+
+  const handleMouseOver = () => setHover(true);
+  const handleMouseOut = () => setHover(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (node) {
+      node.addEventListener("mouseover", handleMouseOver);
+      node.addEventListener("mouseout", handleMouseOut);
+
+      return () => {
+        node.removeEventListener("mouseover", handleMouseOver);
+        node.removeEventListener("mouseout", handleMouseOut);
+      };
+    }
+  }, [ref.current]);
+
+  return [ref, hovering];
+}
+```
+
+`useEffect` hook은 컴포넌트에 이벤트 리스너를 추가하고, 사용자가 현재 요소에 hover했는지에 따라 `hovering` 값을 `true` 혹은 `false`로 설정합니다. `ref`와 `hovering`는 hook에서 반환되어야 합니다. `ref`는 컴포넌트에 ref를 추가하여 `mouseOver`와 `mouseLeave`를 받기 위해, `hovering`은 `Hovering!` 텍스트 영역을 조건부로 렌더링하기 위해서 반환합니다.
+
+`withHover` HOC로 `DogImages` 컴포넌트를 감싸는 대신, `useHover` hook을 `DogImages` 컴포넌트 내부에 바로 사용할 수 있습니다.
+
+```js
+function DogImages(props) {
+  const [hoverRef, hovering] = useHover();
+
+  return (
+    <div ref={hoverRef} {...props}>
+      {hovering && <div id="hover">Hovering!</div>}
+      <div id="list">
+        {props.data.message.map((dog, index) => (
+          <img src={dog} alt="Dog" key={index} />
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+완벽합니다! `withHover` 컴포넌트를 `DogImages`로 감싸지 않고 컴포넌트 내부에  `useHover` hook을 사용할 수 있습니다.
+
+---
+
+일반적으로, React Hooks는 HOC 패턴을 대체하지는 않습니다.
+
+> "In most cases, Hooks will be sufficient and can help reduce nesting in your tree." - [React Docs](https://reactjs.org/docs/hooks-faq.html#do-hooks-replace-render-props-and-higher-order-components)
+
+React docs가 언급한대로, Hooks을 사용하는 것은 컴포넌트 트리의 깊이를 줄일 수 있습니다. HOC 패턴을 사용하면, 깊게 증첩된 컴포넌트 트리 구조가 되기 쉽상입니다.
+
+```js
+<withAuth>
+  <withLayout>
+    <withLogging>
+      <Component />
+    </withLogging>
+  </withLayout>
+</withAuth>
+```
+
+Hook을 컴포넌트에 바로 추가하면, 더이상 컴포넌트를 감쌀 필요가 없습니다.
+
+고차 컴포넌트는 단일 공간에 모든 로직을 가진채로 다수 컴포넌트에 같은 로직을 쉽게 제공합니다. Hooks은 컴포넌트 내부에 커스텀 행동을 추가하는 것을 가능케 합니다. 하지만 HOC 패턴에 비해 여러 컴포넌트들이 Hook이 제공하는 행동에 의존할 경우, 버그가 발생할 위험이 증가됩니다.
+
+### Best use-cases for a HOC:
+
+- 동일하지만 사용자 맞춤형이 아닌 행동을 다수의 컴포넌트에 사용해야할 때 유용합니다.
+
+- 별도의 맞춤형 로직 없이, 컴포넌트가 혼자서 동작할 수 있습니다.
+### Best use-cases for Hooks:
+
+- 각 컴포넌트마다 행동을 커스터마이징해야 할 때 유용합니다.
+- 그 행동이 어플리케이션 전반에 걸쳐 퍼져나가지 않으며, 단 하나(혹은 몇몇 컴포넌트)에 한해 사용할 때 유용합니다.
+- 그 행동이 컴포넌트에 많은 props를 추가할 때 유용합니다.
+
+<br />
+
+## Case Study
