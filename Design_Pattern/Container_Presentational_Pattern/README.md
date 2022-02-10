@@ -159,9 +159,8 @@ Container/Presentational 패턴은 어플리케이션 로직을 렌더링 로직
 <li>2. 각 생명주기에 여러 로직이 포함됨(componentDidMount에서 fetch + eventListener 등록, componentWillUnmount에서 cleanup...) -> 복잡해짐</li> 
 <li>
 3. 개념적으로 React 컴포넌트는 항상 함수에 더 가깝습니다. Hook은 React의 정신을 희생하지 않고 함수의 사용을 권장합니다. 
-
 (Component는 입력값으로 props와 state를 받아 React Element를 출력하는 함수)
-
+<br />
 <span style="padding-left:10px;color:#bbb">👉 Conceptually, components are like JavaScript functions. They accept arbitrary inputs (called “props”) and return React elements describing what should appear on the screen.</span>
 </li>
 </ul>
