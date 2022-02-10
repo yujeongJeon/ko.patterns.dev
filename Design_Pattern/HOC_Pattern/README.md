@@ -250,3 +250,146 @@ Hook을 컴포넌트에 바로 추가하면, 더이상 컴포넌트를 감쌀 �
 <br />
 
 ## Case Study
+
+HOC 패턴에 의존하는 어떤 라이브러리들은 출시 후에 Hooks 지원을 추가하였습니다. [Apollo Client](https://www.apollographql.com/docs/react/)가 바로 그 예시입니다.
+
+> "No experience with Apollo Client is needed to understand this example."
+
+Apollo Client를 사용하는 한가지 방법은 `graphql()` 고차 컴포넌트를 사용하는 것입니다.
+
+```js
+import React from "react";
+import "./styles.css";
+
+import { graphql } from "react-apollo";
+import { gql } from "apollo-boost";
+
+const ADD_MESSAGE = gql`
+  mutation AddMessage($message: String!) {
+    addMessage(message: $message) {
+      message
+    }
+  }
+`;
+
+class Input extends React.Component {
+  constructor() {
+    super();
+    this.state = { message: "" };
+  }
+
+  handleChange = (e) => {
+    this.setState({ message: e.target.value });
+  };
+
+  handleClick = () => {
+    this.props.mutate({ variables: { message: this.state.message } });
+  };
+
+  render() {
+    return (
+      <div className="input-row">
+        <input
+          onChange={this.handleChange}
+          type="text"
+          placeholder="Type something..."
+        />
+        <button onClick={this.handleClick}>Add</button>
+      </div>
+    );
+  }
+}
+
+export default graphql(ADD_MESSAGE)(Input);
+```
+
+`graphql()` HOC로, 고차 컴포넌트로 감싼 컴포넌트에서 사용할 수 있는 데이터를 클라이언트로부터 생성할 수 있습니다! 여전히 `graphql()` HOC를 사용할 수는 있지만, 몇가지 단점이 존재합니다.
+
+컴포넌트가 여러 resolver들에 접근해야 할 때, 여러 `graphql()` 고차 컴포넌트를 구성해야합니다. 여러 개의 HOC들을 구성하는 것은 데이터가 어떻게 컴포넌트로 전달되는지 이해하기 어렵게 만듭니다. 이 경우, HOC의 순서가 중요한데, 코드를 리팩터링할 때 버그를 쉽게 유발할 수 있습니다.
+
+
+Hook이 출시된 후에, Apollo는 Hooks 지원을 Apollo Client 라이브러리에 추가하였습니다. `graphql()` 고차 컴포넌트 대신, 라이브러리가 지원하는 Hook을 통해 개발자들은 데이터에 쉽게 접근할 수 있게 되었습니다.
+
+`graphql()` 고차 컴포넌트 예시로 보았던 것과 정확히 동일한 데이터를 사용하는 예제를 봅시다. 이번에는 Apollo Client에서 제공하는 `useMutation` hook을 사용하여 컴포넌트에 데이터를 제공할 것입니다.
+
+```js
+import React, { useState } from "react";
+import "./styles.css";
+
+import { useMutation } from "@apollo/react-hooks";
+import { gql } from "apollo-boost";
+
+const ADD_MESSAGE = gql`
+  mutation AddMessage($message: String!) {
+    addMessage(message: $message) {
+      message
+    }
+  }
+`;
+
+export default function Input() {
+  const [message, setMessage] = useState("");
+  const [addMessage] = useMutation(ADD_MESSAGE, {
+    variables: { message }
+  });
+
+  return (
+    <div className="input-row">
+      <input
+        onChange={(e) => setMessage(e.target.value)}
+        type="text"
+        placeholder="Type something..."
+      />
+      <button onClick={addMessage}>Add</button>
+    </div>
+  );
+}
+```
+
+`useMutation` hook을 사용하여 데이터를 컴포넌트로 전달하기 위해 필요했던 코드의 양을 줄였습니다.
+
+boilerplate의 감소뿐만 아니라, 여러개의 resolver들의 데이터를 컴포넌트에서 사용하는 것 또한 쉽습니다. 여러 개의 고차 컴포넌트를 구성하는 것 대신, 컴포넌트 내부에 여러 hook들을 작성하기만 하면 됩니다. 데이터가 컴포넌트로 전달되는 방법을 파악하는 것도 훨씬 쉽고, 컴포넌트를 리팩터링하거나 더 작은 단위로 쪼갤 때 개발자 경험을 향상시킵니다.
+
+<br />
+
+## Pros
+
+HOC 패턴을 사용하면 단일 공간에 재사용가능한 모든 것을 담을 수 있습니다. 잠재적으로 새로운 버그를 매번 유발할 수 있는 코드를 계속해서 복제하면서 발생할 수 있는 버그가 어플리케이션 전역에 퍼지는 위험을 줄일 수 있습니다. 모든 로직을 한 공간에 둠으로써 DRY 원칙을 준수하며 관심사를 쉽게 분리할 수 있습니다.
+
+## Cons
+
+HOC가 컴포넌트로 전달하는 prop 명이 충돌할 수 있습니다.
+
+```js
+function withStyles(Component) {
+  return props => {
+    const style = { padding: '0.2rem', margin: '1rem' }
+    return <Component style={style} {...props} />
+  }
+}
+
+const Button = () = <button style={{ color: 'red' }}>Click me!</button>
+const StyledButton = withStyles(Button)
+```
+
+이 경우, `withStyles` HOC는 `style` 이라는 prop을 우리가 전달한 컴포넌트에 추가합니다. 그러나, `Button` 컴포넌트는 이미 `style`이라는 prop을 가지고 있어, 이것을 덮어쓰게 됩니다! props을 병합하거나 이름을 다르게 함으로써 실수로 발생할 수 있는 이름 충돌을 해결해야 합니다.
+
+```js
+function withStyles(Component) {
+  return props => {
+    const style = {
+      padding: '0.2rem',
+      margin: '1rem',
+      ...props.style
+    }
+
+    return <Component style={style} {...props} />
+  }
+}
+
+const Button = () = <button style={{ color: 'red' }}>Click me!</button>
+const StyledButton = withStyles(Button)
+```
+
+내부 자식 컴포넌트에 props를 전달하는 다수의 HOC를 사용할 때, 어떤 HOC가 어떤 prop에 책임이 있는지 알아내기 어렵습니다. 
+이로 인해 어플리케이션의 디버깅과 확장이 어려워질 수 있습니다.
