@@ -241,8 +241,6 @@ export default function App() {
 }
 ```
 
-Each component that needs to have access to the ThemeContext, can now simply use the useThemeContext hook.
-
 이제 `ThemeContext`에 접근해야 하는 각 컴포넌트는 간단하게 `useThemeContext` hook을 사용합니다.
 
 ```js
@@ -258,3 +256,144 @@ export default function TextBox() {
 
 ## Case Study
 
+어떤 라이브러리들은 provider의 값들을 컴포넌트에서 사용할 수 있도록 하는 내장된 provider를 제공하기도 합니다. [styled-components](https://styled-components.com/docs/advanced)가 좋은 예입니다.
+
+> No experience with styled-components is needed to understand this example.
+
+styled-components 라이브러리는 `ThemeProvider`를 제공합니다. 각 styled 컴포넌트는 이 provider의 값에 접근할 수 있습니다! 컨텍스트 API를 직접 생성하는 대신 제공된 API를 사용할 수 있습니다!
+
+똑같은 List 예제를 사용하여 styled-component 라이브러리에서 가져온 `ThemeProvider`로 컴포넌트를 감쌉니다.
+
+```js
+import { ThemeProvider } from "styled-components";
+
+export default function App() {
+  const [theme, setTheme] = useState("dark");
+
+  function toggleTheme() {
+    setTheme(theme === "light" ? "dark" : "light");
+  }
+
+  return (
+    <div className={`App theme-${theme}`}>
+      <ThemeProvider theme={themes[theme]}>
+        <>
+          <Toggle toggleTheme={toggleTheme} />
+          <List />
+        </>
+      </ThemeProvider>
+    </div>
+  );
+}
+```
+
+`ListItem` 컴포넌트에 인라인 `style`을 전달하는 대신, `styled.li` 컴포넌트를 생성할 것입니다. `styled.li`은 styled 컴포넌트이므로, `theme` 값에 접근할 수 있습니다.
+
+```js
+import styled from "styled-components";
+
+export default function ListItem() {
+  return (
+    <Li>
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+      tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
+      veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea
+      commodo consequat.
+    </Li>
+  );
+}
+
+const Li = styled.li`
+  ${({ theme }) => `
+     background-color: ${theme.backgroundColor};
+     color: ${theme.color};
+  `}
+`;
+```
+
+이제 `ThemeProvider`로 스타일이 적용된 모든 컴포넌트들에 스타일들을 쉽게 적용할 수 있습니다.
+
+## Pros
+
+Provider 패턴과 Context API는 각 컴포넌트 레이어를 통해 일일히 데이터를 전달할 필요 없이, 다수의 컴포넌트들에 데이터를 전달할 수 있게 해줍니다.
+
+Provider 패턴은 코드를 리팩터링할 때 실수로 발생할 수 있는 버그에 대한 위험을 줄입니다. 이전에는, 나중에 prop명을 수정하려면 이 값이 사용된 모든 어플리케이션의 prop을 바꿔야 했습니다.
+
+안티 패턴으로 간주될 수 있는 prop-drilling을 더이상 처리할 필요가 없습니다. 이전에는 특정 prop 값이 어디서부터 시작되었는지 명확하지 않았기 때문에 어플리케이션의 데이터 흐름을 이해하는 것이 어려웠습니다. Provider 패턴으로, 해당 데이터와 연관이 없는 컴포넌트들에 props를 전달할 필요가 없어졌습니다.
+
+컴포넌트에 전역 상태값에 대한 접근 권한을 부여할 수 있으므로 Provider 패턴을 통해 글로벌 상태를 쉽게 유지할 수 있습니다.
+
+## Cons
+
+어떤 경우에는, Provider 패턴을 남용하는 것은 성능 이슈를 야기할 수 있습니다. state가 변경될 때마다, 컨텍스트를 사용하는 모든 컴포넌트들이 리렌더링됩니다.
+
+예시를 봅시다. 간단한 카운터가 있고, value는 `Button` 컴포넌트의 `Increment` 버튼을 클릭할 때마다 증가합니다. 또한, `Reset` 컴포넌트의 `Reset` 버튼으로 값을 0으로 초기화할 수 있습니다.
+
+그러나 `Increment`를 클릭할 때 count만 리렌더링되는 것이 아님을 확인할 수 있습니다. `Reset` 컴포넌트의 데이터또한 리렌더링됩니다!
+
+```js
+import React, { useState, createContext, useContext, useEffect } from "react";
+import ReactDOM from "react-dom";
+import moment from "moment";
+
+import "./styles.css";
+
+const CountContext = createContext(null);
+
+function Reset() {
+  const { setCount } = useCountContext();
+
+  return (
+    <div className="app-col">
+      <button onClick={() => setCount(0)}>Reset count</button>
+      <div>Last reset: {moment().format("h:mm:ss a")}</div>
+    </div>
+  );
+}
+
+function Button() {
+  const { count, setCount } = useCountContext();
+
+  return (
+    <div className="app-col">
+      <button onClick={() => setCount(count + 1)}>Increment</button>
+      <div>Current count: {count}</div>
+    </div>
+  );
+}
+
+function useCountContext() {
+  const context = useContext(CountContext);
+  if (!context)
+    throw new Error(
+      "useCountContext has to be used within CountContextProvider"
+    );
+  return context;
+}
+
+function CountContextProvider({ children }) {
+  const [count, setCount] = useState(0);
+  return (
+    <CountContext.Provider value={{ count, setCount }}>
+      {children}
+    </CountContext.Provider>
+  );
+}
+
+function App() {
+  return (
+    <div className="App">
+      <CountContextProvider>
+        <Button />
+        <Reset />
+      </CountContextProvider>
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById("root"));
+```
+
+`Reset` 컴포넌트또한 `useCountContext`를 사용하기 때문에 리렌더링됩니다. 작은 어플리케이션에서는 그리 큰 이슈는 아닙니다. 그러나 대규모의 어플리케이션에서는 자주 갱신되는 값을 많은 컴포넌트에 전달하게되면 성능에 좋지 않은 영향을 끼칠 수 있습니다.
+
+컴포넌트가 갱신될 수 있는 값을 불필요하게 포함하는 provider를 사용하지 않게 하기 위해, 사용사례에 따라 provider를 분리하여 생성해야 합니다.
