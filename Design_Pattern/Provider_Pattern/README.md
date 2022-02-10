@@ -185,3 +185,76 @@ export default function TextBox() {
 <br />
 
 ## Hooks
+
+컴포넌트에 컨텍스트를 제공할 때  hook을 사용할 수 있습니다. 각 컴포넌트에 `useContext`와 Context를 임포트하는 대신, 필요한 컨텍스트를 반환하는 hook을 사용할 수 있습니다.
+
+```js
+function useThemeContext() {
+  const theme = useContext(ThemeContext);
+  return theme;
+}
+```
+
+유효한 테마인지 확인하기 위해, `useContext(ThemeContext)`가 falsy한 값을 반환하는 경우에 에러를 throw합시다.
+
+```js
+function useThemeContext() {
+  const theme = useContext(ThemeContext);
+  if (!theme) {
+    throw new Error("useThemeContext must be used within ThemeProvider");
+  }
+  return theme;
+}
+```
+
+`ThemeContext.Provider`로 컴포넌트들을 직접 감싸는 대신에, 해당 값들을 제공하기 위해 컴포넌트를 감싸는 HOC를 생성할 수 있습니다. 이렇게 컨텍스트 로직과 렌더링되는 컴포넌트를 분리하여 provider의 재사용성을 향상시킬 수 있습니다.
+
+```js
+function ThemeProvider({children}) {
+  const [theme, setTheme] = useState("dark");
+
+  function toggleTheme() {
+    setTheme(theme === "light" ? "dark" : "light");
+  }
+
+  const providerValue = {
+    theme: themes[theme],
+    toggleTheme
+  };
+
+  return (
+    <ThemeContext.Provider value={providerValue}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export default function App() {
+  return (
+    <div className={`App theme-${theme}`}>
+      <ThemeProvider>
+        <Toggle />
+        <List />
+      </ThemeProvider>
+    </div>
+  );
+}
+```
+
+Each component that needs to have access to the ThemeContext, can now simply use the useThemeContext hook.
+
+이제 `ThemeContext`에 접근해야 하는 각 컴포넌트는 간단하게 `useThemeContext` hook을 사용합니다.
+
+```js
+export default function TextBox() {
+  const theme = useThemeContext();
+
+  return <li style={theme.theme}>...</li>;
+}
+```
+
+각각 다른 컨텍스트마다 hook을 생성함으로써, provider의 로직과 데이터를 렌더링하는 컴포넌트의 로직을 쉽게 분리할 수 있습니다.
+
+
+## Case Study
+
