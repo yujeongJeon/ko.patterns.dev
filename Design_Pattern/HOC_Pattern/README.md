@@ -239,13 +239,12 @@ Hook을 컴포넌트에 바로 추가하면, 더이상 컴포넌트를 감쌀 �
 ### Best use-cases for a HOC:
 
 - 동일하지만 사용자 맞춤형이 아닌 행동을 다수의 컴포넌트에 사용해야할 때 유용합니다.
-
 - 별도의 맞춤형 로직 없이, 컴포넌트가 혼자서 동작할 수 있습니다.
 ### Best use-cases for Hooks:
 
 - 각 컴포넌트마다 행동을 커스터마이징해야 할 때 유용합니다.
 - 그 행동이 어플리케이션 전반에 걸쳐 퍼져나가지 않으며, 단 하나(혹은 몇몇 컴포넌트)에 한해 사용할 때 유용합니다.
-- 그 행동이 컴포넌트에 많은 props를 추가할 때 유용합니다.
+- 컴포넌트에 많은 props를 추가해야 할 때 유용합니다.
 
 <br />
 
@@ -393,3 +392,90 @@ const StyledButton = withStyles(Button)
 
 내부 자식 컴포넌트에 props를 전달하는 다수의 HOC를 사용할 때, 어떤 HOC가 어떤 prop에 책임이 있는지 알아내기 어렵습니다. 
 이로 인해 어플리케이션의 디버깅과 확장이 어려워질 수 있습니다.
+
+---
+
+### 첨언
+
+#### 1. HOC 활용 예시
+
+```
+- 동일하지만 사용자 맞춤형이 아닌 행동을 다수의 컴포넌트에 사용해야할 때 유용합니다.
+- 별도의 맞춤형 로직 없이, 컴포넌트가 혼자서 동작할 수 있습니다.
+```
+
+```ts
+const withAccess = (WrappedComponent: () => JSX.Element, route: string) => {
+    const Component = () => {
+        const {
+            accessStore: {isAccessedFromHome},
+        } = useRenewalStore()
+        if (!isAccessedFromHome) {
+            return <Redirect route={route}></Redirect>
+        }
+        return <WrappedComponent />
+    }
+
+    return Component
+}
+
+export default withAccess
+```
+
+#### 2. Hook 활용 예시
+
+```
+- 각 컴포넌트마다 행동을 커스터마이징해야 할 때 유용합니다.
+- 그 행동이 어플리케이션 전반에 걸쳐 퍼져나가지 않으며, 단 하나(혹은 몇몇 컴포넌트)에 한해 사용할 때 유용합니다.
+- 컴포넌트에 많은 props를 추가해야 할 때 유용합니다.
+```
+
+```ts
+import {createRef, KeyboardEvent, RefObject, useCallback, useMemo} from 'react'
+
+const useAutoFocus = ({numOfInputs}: UseAutoFocusArgs) => {
+    const refs = useMemo(
+        () =>
+            new Array(numOfInputs).fill(0).reduce<RefObject<HTMLInputElement>[]>((arr) => {
+                const ref = createRef<HTMLInputElement>()
+                arr.push(ref)
+                return arr
+            }, []),
+        [],
+    )
+
+    // ... 중략 ...
+
+    const setAutoFocus = useMemo(() => {
+        return ({target, maxLength}: SliceMaxLengthArgs) => {
+            const {value} = target
+            const {length} = value
+            if (length === maxLength) {
+                setNextFocus(target)
+            } else if (length === 0) {
+                setBeforeFocus(target)
+            } else if (length > maxLength) {
+                setNextFocus(target)
+            }
+        }
+    }, [])
+
+    const handleKeyupBackSpace = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+        const {currentTarget, key} = e
+        const {value} = currentTarget
+        const isBackspaceInEmptyInput = key === 'Backspace' && !value
+        if (isBackspaceInEmptyInput) {
+            setBeforeFocus(currentTarget)
+        }
+    }, [])
+
+    return {
+        refs,
+        setAutoFocus,
+        handleKeyupBackSpace,
+    }
+}
+
+export default useAutoFocus
+
+```

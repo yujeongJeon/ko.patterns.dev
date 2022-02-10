@@ -138,3 +138,44 @@ Container/Presentational 패턴은 어플리케이션 로직을 렌더링 로직
 
 여전히 Container/Presentational 패턴을 React Hooks와 더불어 사용할 수 있지만, 이 패턴은 작은 규모의 어플리케이션에서는 과할 수 있습니다.
 
+---
+
+## 첨언
+
+[Presentational and Container Components - Dan Abramov](https://medium.com/@dan_abramov/smart-and-dumb-components-7ca2f9a7c7d0) 에서 2019년에 업데이트
+
+> Update from 2019: I wrote this article a long time ago and my views have since evolved. In particular, I don’t **suggest splitting your components like this anymore**. If you find it natural in your codebase, this pattern can be handy. But I’ve seen it enforced without any necessity and with almost dogmatic fervor far too many times. **The main reason I found it useful was because it let me separate complex stateful logic from other aspects of the component. Hooks let me do the same thing without an arbitrary division.** This text is left intact for historical reasons but don’t take it too seriously.
+
+2015년 당시, C/P 패턴을 쓰는 이유는 복잡한 상태 관련 로직을 컴포넌트에서 분리하기 위함이었다.
+그러나 [Hook의 개요](https://ko.reactjs.org/docs/hooks-intro.html#motivation)에서 말하듯이, 더이상 해당 목적으로 C/P 패턴이 아닌 Hook을 사용하기를 권장한다.
+
+> Hook은 계층의 변화 없이 상태 관련 로직을 재사용할 수 있도록 도와줍니다.
+
+<details open>
+<summary>hook이 나온 배경</summary>
+<div style="background-color:#2e2e2e;color:#eee;padding:18px 20px 18px 0;margin-top:10px;">
+<ul style="list-style:none;">
+<li>1. 코드 재사용을 위한 고전 방법들(render props, HOC)은 재사용을 목적으로 하는 Wrapper 컴포넌트를 추가함으로써 컴포넌트 트리를 복잡하게 만듦</li>
+<li>2. 각 생명주기에 여러 로직이 포함됨(componentDidMount에서 fetch + eventListener 등록, componentWillUnmount에서 cleanup...) -> 복잡해짐</li> 
+<li>
+3. 개념적으로 React 컴포넌트는 항상 함수에 더 가깝습니다. Hook은 React의 정신을 희생하지 않고 함수의 사용을 권장합니다. 
+
+(Component는 입력값으로 props와 state를 받아 React Element를 출력하는 함수)
+
+<span style="padding-left:10px;color:#bbb">👉 Conceptually, components are like JavaScript functions. They accept arbitrary inputs (called “props”) and return React elements describing what should appear on the screen.</span>
+</li>
+</ul>
+</div>
+</details>
+
+<br />
+
+### Q. 그렇다면 Hook이 C/P 패턴을 완전히 대체할까?
+
+Hook은 C/P 패턴을 대체하는 것은 아니다.
+
+개념적으로 C/P 패턴을 적용한 구조가 자연스러우면 C/P 패턴을 사용해도 좋다고 생각된다.
+
+Hook은 로직을 재사용하는데 유용하고, C/P 패턴은 컴포넌트를 재사용하는데 유용하다. (이전에 도입했던 VAC 패턴 참고)
+
+참고한 글 : [React Hook VS Container Component](https://yujonglee.com/socwithhooks.html)
